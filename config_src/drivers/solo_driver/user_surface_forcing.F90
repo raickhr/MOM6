@@ -40,6 +40,13 @@ type, public :: user_surface_forcing_CS ; private
   real :: gust_const         !< A constant unresolved background gustiness
                              !! that contributes to ustar [R L Z T-2 ~> Pa].
 
+  !###################### ADDED BY SHIKHAR RAI shikhar.rai@whoi.edu ##########
+  real :: uwind_mag              ! the maximum of zonal wind when giving user defined wind profile 
+  real :: cdrag_wind             ! constant coefficient of drag value for surface wind stress
+  logical :: relative_windstress ! If true, wind stress is calculated by relative winds
+  real :: rho_air                ! density of air
+  !###################### ends ADDED BY SHIKHAR RAI shikhar.rai@whoi.edu ##########
+
   type(diag_ctrl), pointer :: diag !< A structure that is used to regulate the
                              !! timing of diagnostic output.
 end type user_surface_forcing_CS
@@ -80,17 +87,62 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
   ! calculation of ustar - otherwise the lower bound would be Isq.
   do j=js,je ; do I=is-1,Ieq
     ! Change this to the desired expression.
-    forces%taux(I,j) = G%mask2dCu(I,j) * 0.0*US%Pa_to_RLZ_T2
+
+    ! forces%taux(I,j) = G%mask2dCu(I,j) * 0.0*US%Pa_to_RLZ_T2
+
+    ! ####################CHANGED BY SHIKHAR RAI ########################
+
+    if (CS%relative_windstress) then
+        ! first put relative u wind velocity in the place where taux is stored
+        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * cos(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat) &
+                          - sfc_state%u(I,j))
+    else
+        ! first put u wind velocity in the place where taux is stored
+        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * cos(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat))
+      endif
+    ! ####################CHANGED BY SHIKHAR RAI ########################
+
   enddo ; enddo
   do J=js-1,Jeq ; do i=is,ie
-    forces%tauy(i,J) = G%mask2dCv(i,J) * 0.0  ! Change this to the desired expression.
+    !forces%tauy(i,J) = G%mask2dCv(i,J) * 0.0  ! Change this to the desired expression.
+    if (CS%relative_windstress) then
+        ! ####################CHANGED BY SHIKHAR RAI ########################
+
+        ! first put relative u wind velocity in the place where taux is stored
+        forces%tauy(i,J) = -G%mask2dCv(i,J) * sfc_state%v(i,J)
+    else
+        forces%tauy(i,J) = -G%mask2dCv(i,J) * 0.0
+    endif
+        ! ####################CHANGED BY SHIKHAR RAI ########################
+
   enddo ; enddo
+
+ ! ####################CHANGED BY SHIKHAR RAI ########################
+
+  do j=js,je ; do I=is-1,Ieq
+      ! taux has relative winds or absolute winds now so calculating wind stress using drag coeff
+      ! the grid is arakawa C grid thefore for y dimension the value is averaged
+      forces%taux(I,j) = G%mask2dCu(I,j) * CS%rho_air * CS%cdrag_wind * sqrt(forces%taux(I,j)**2  &
+                          + (0.5 *(forces%tauy(I,j) + forces%tauy(I+1,j)))**2) * forces%taux(I,j) * US%Pa_to_RLZ_T2
+  enddo ; enddo
+
+  do J=js-1,Jeq ; do i=is,ie
+      ! tauy has relative winds or absolute winds now so calculating wind stress using drag coeff
+    ! the grid is arakawa C grid thefore for x dimension the value is averaged
+       forces%tauy(i,J) = G%mask2dCv(i,J) * CS%rho_air * CS%cdrag_wind * &
+                          sqrt((0.5*(forces%tauy(i,J) + forces%tauy(i,J-1)))**2 + forces%tauy(i,J)**2) * forces%taux(i,J) *US%Pa_to_RLZ_T2
+  enddo ; enddo
+
+
+
+  ! #################### ENDS CHANGED BY SHIKHAR RAI ########################
 
   !    Set the surface friction velocity, in units of [Z T-1 ~> m s-1].  ustar
   !  is always positive.
   if (associated(forces%ustar)) then ; do j=js,je ; do i=is,ie
     !  This expression can be changed if desired, but need not be.
-    forces%tau_mag(i,j) = G%mask2dT(i,j) * (CS%gust_const + &
+    forces%ta
+    u_mag(i,j) = G%mask2dT(i,j) * (CS%gust_const + &
             sqrt(0.5*(forces%taux(I-1,j)**2 + forces%taux(I,j)**2) + &
                  0.5*(forces%tauy(i,J-1)**2 + forces%tauy(i,J)**2)))
     if (associated(forces%ustar)) &
@@ -292,6 +344,26 @@ subroutine USER_surface_forcing_init(Time, G, US, param_file, diag, CS)
                  "fluxes with RESTORE_SALINITY or RESTORE_TEMPERATURE.", &
                  units="kg m-3", default=CS%Rho0*US%R_to_kg_m3, scale=US%kg_m3_to_R, &
                  do_not_log=(CS%Flux_const==0.0).or.(.not.CS%restorebuoy))
+
+
+  !################## ADDED BY SHIKHAR FOR READING USER DEFINED WIND PROFILE FOR RELATIVE WIND STRESS #######
+  call get_param(param_file, mdl, "UWIND_MAG", CS%uwind_mag, &
+                 "The magnitude of zonal wind for user defined cos profile of winds.", &
+                 units="m s-2", default = 9.80, scale=US%m_to_L**2*US%Z_to_m*US%T_to_s**2)
+
+  call get_param(param_file, mdl, "RELATIVE_WINDSTRESS", CS%relative_windstress, &
+                 "If true, wind stress is calculated by relative winds", &
+                default= .false.)
+
+  call get_param(param_file, mdl, "CDRAG_WIND", CS%cdrag_wind, &
+                "constant coefficient of drag for wind stress", &
+                units="nondim", default=0.05)
+
+  call get_param(param_file, mdl, "RHO_AIR", CS%rho_air, &
+                "Constant density of air.", &
+                units="m s-2", default = 1.293, scale=US%kg_m3_to_R)
+
+  !################## ENDS ADDED BY SHIKHAR FOR READING USER DEFINED WIND PROFILE FOR RELATIVE WIND STRESS #######
 
 end subroutine USER_surface_forcing_init
 
