@@ -45,6 +45,8 @@ type, public :: user_surface_forcing_CS ; private
   real :: cdrag_wind             ! constant coefficient of drag value for surface wind stress
   logical :: relative_windstress ! If true, wind stress is calculated by relative winds
   real :: rho_air                ! density of air
+  real    :: south_lat          !< southern latitude of the domain [degrees_N] or [km] or [m]
+  real    :: len_lat            !< domain length in latitude [degrees_N] or [km] or [m]
   !###################### ends ADDED BY SHIKHAR RAI shikhar.rai@whoi.edu ##########
 
   type(diag_ctrl), pointer :: diag !< A structure that is used to regulate the
@@ -77,6 +79,13 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
   ! so that the original (unmodified) version is not accidentally used.
   call MOM_error(FATAL, "User_wind_surface_forcing: " // &
      "User forcing routine called without modification." )
+
+  ! Added by Shikhar Rai shikhar.rai@whoi.edu 
+
+  CS%south_lat = G%south_lat
+  CS%len_lat = G%len_lat
+
+  ! Added by Shikhar Rai ends 
 
   is = G%isc ; ie = G%iec ; js = G%jsc ; je = G%jec
   Isq = G%IscB ; Ieq = G%IecB ; Jsq = G%JscB ; Jeq = G%JecB
@@ -146,7 +155,7 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
   if (associated(forces%ustar)) then ; do j=js,je ; do i=is,ie
     !  This expression can be changed if desired, but need not be.
 
-    u_mag(i,j) = G%mask2dT(i,j) * (CS%gust_const + &
+    forces%tau_mag(i,j) = G%mask2dT(i,j) * (CS%gust_const + &
             sqrt(0.5*(forces%taux(I-1,j)**2 + forces%taux(I,j)**2) + &
                  0.5*(forces%tauy(i,J-1)**2 + forces%tauy(i,J)**2)))
     if (associated(forces%ustar)) &
