@@ -77,8 +77,13 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
 
   !   When modifying the code, comment out this error message.  It is here
   ! so that the original (unmodified) version is not accidentally used.
-  call MOM_error(FATAL, "User_wind_surface_forcing: " // &
-     "User forcing routine called without modification." )
+
+  !!!! ##########EDITED BY SHIKHAR RAI shikhar.rai@whoi.edu
+
+  ! call MOM_error(FATAL, "User_wind_surface_forcing: " // &
+  !    "User forcing routine called without modification." )
+
+  !!!! ##########EDITED BY SHIKHAR RAI ends
 
   ! Added by Shikhar Rai shikhar.rai@whoi.edu 
 
