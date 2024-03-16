@@ -66,8 +66,12 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
   type(user_surface_forcing_CS), pointer       :: CS   !< A pointer to the control structure returned
                                                        !! by a previous call to user_surface_forcing_init
 
+  real :: PI            ! A common irrational number, 3.1415926535... [nondim] //added by shikhar shikhar.rai@whoi.edu
+
   ! Local variables
   integer :: i, j, is, ie, js, je, Isq, Ieq, Jsq, Jeq
+
+  PI = 4.0*atan(1.0)    ! added by shikhar  shikhar.rai@whoi.edu
 
   !   When modifying the code, comment out this error message.  It is here
   ! so that the original (unmodified) version is not accidentally used.
