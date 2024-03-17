@@ -112,11 +112,11 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
 
     if (CS%relative_windstress) then
         ! first put relative u wind velocity in the place where taux is stored
-        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * cos(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat) &
+        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * sin(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat) &
                           - sfc_state%u(I,j))
     else
         ! first put u wind velocity in the place where taux is stored
-        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * cos(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat))
+        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * sin(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat))
       endif
     ! ####################CHANGED BY SHIKHAR RAI ########################
 
