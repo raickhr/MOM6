@@ -391,11 +391,11 @@ subroutine USER_surface_forcing_init(Time, G, US, param_file, diag, CS)
 
   call get_param(param_file, mdl, "WINDS_JETWIDTH", CS%winds_jet_width, &
                 "Winds Jet Width in km", &
-                units="k", default = 200, scale=US%m_to_L)
+                units="k", default = 200.0, scale=US%m_to_L)
 
   call get_param(param_file, mdl, "BACKGROUNDWIND", CS%background_wind, &
                 "Winds Jet Width in km", &
-                units="m s-1", default = 2, scale=US%m_s_to_L_T)
+                units="m s-1", default = 2.0, scale=US%m_s_to_L_T)
 
   !################## ENDS ADDED BY SHIKHAR FOR READING USER DEFINED WIND PROFILE FOR RELATIVE WIND STRESS #######
 
