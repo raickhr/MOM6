@@ -123,9 +123,9 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
                           - sfc_state%u(I,j)) + CS%background_wind
     else
         ! first put u wind velocity in the place where taux is stored
-        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * sin(PI*yposInJet) &
+        forces%taux(I,j) = G%mask2dCu(I,j) * CS%uwind_mag * sin(PI*yposInJet) &
                            + CS%background_wind
-      endif
+    endif
     ! ####################CHANGED BY SHIKHAR RAI ########################
 
   enddo ; enddo
