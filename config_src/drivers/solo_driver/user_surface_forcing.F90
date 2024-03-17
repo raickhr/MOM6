@@ -47,6 +47,8 @@ type, public :: user_surface_forcing_CS ; private
   real :: rho_air                ! density of air
   real    :: south_lat          !< southern latitude of the domain [degrees_N] or [km] or [m]
   real    :: len_lat            !< domain length in latitude [degrees_N] or [km] or [m]
+  real    :: winds_jet_width    ! width of the zonal wind jet
+  real    :: background_wind    ! zonal background wind
   !###################### ends ADDED BY SHIKHAR RAI shikhar.rai@whoi.edu ##########
 
   type(diag_ctrl), pointer :: diag !< A structure that is used to regulate the
@@ -68,7 +70,7 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
   type(user_surface_forcing_CS), pointer       :: CS   !< A pointer to the control structure returned
                                                        !! by a previous call to user_surface_forcing_init
 
-  real :: PI            ! A common irrational number, 3.1415926535... [nondim] //added by shikhar shikhar.rai@whoi.edu
+  real :: PI, yposInJet, jetSouthPos            ! A common irrational number, 3.1415926535... [nondim] //added by shikhar shikhar.rai@whoi.edu
 
   ! Local variables
   integer :: i, j, is, ie, js, je, Isq, Ieq, Jsq, Jeq
@@ -90,6 +92,7 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
   CS%south_lat = G%south_lat
   CS%len_lat = G%len_lat
 
+  jetSouthPos = CS%south_lat + (CS%len_lat - CS%winds_jet_width)/2
   ! Added by Shikhar Rai ends 
 
   is = G%isc ; ie = G%iec ; js = G%jsc ; je = G%jec
@@ -109,14 +112,19 @@ subroutine USER_wind_forcing(sfc_state, forces, day, G, US, CS)
     ! forces%taux(I,j) = G%mask2dCu(I,j) * 0.0*US%Pa_to_RLZ_T2
 
     ! ####################CHANGED BY SHIKHAR RAI ########################
-
+    yposInJet = (G%geoLatCu(I,j)-jetSouthPos)/CS%winds_jet_width
+    if ((yposInJet > 1 ) .OR. (yposInJet < 0)) then
+        yposInJet = 0.0
+    endif
+    
     if (CS%relative_windstress) then
         ! first put relative u wind velocity in the place where taux is stored
-        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * sin(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat) &
-                          - sfc_state%u(I,j))
+        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * sin(PI*yposInJet) &
+                          - sfc_state%u(I,j)) + CS%background_wind
     else
         ! first put u wind velocity in the place where taux is stored
-        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * sin(PI*(G%geoLatCu(I,j)-CS%South_lat)/CS%len_lat))
+        forces%taux(I,j) = G%mask2dCu(I,j) * (CS%uwind_mag * sin(PI*yposInJet) &
+                           + CS%background_wind
       endif
     ! ####################CHANGED BY SHIKHAR RAI ########################
 
@@ -379,7 +387,15 @@ subroutine USER_surface_forcing_init(Time, G, US, param_file, diag, CS)
 
   call get_param(param_file, mdl, "RHO_AIR", CS%rho_air, &
                 "Constant density of air.", &
-                units="m s-2", default = 1.293, scale=US%kg_m3_to_R)
+                units="kg m-3", default = 1.293, scale=US%kg_m3_to_R)
+
+  call get_param(param_file, mdl, "WINDS_JETWIDTH", CS%winds_jet_width, &
+                "Winds Jet Width in km", &
+                units="k", default = 200, scale=US%m_to_L)
+
+  call get_param(param_file, mdl, "BACKGROUNDWIND", CS%background_wind, &
+                "Winds Jet Width in km", &
+                units="m s-1", default = 2, scale=US%m_s_to_L_T)
 
   !################## ENDS ADDED BY SHIKHAR FOR READING USER DEFINED WIND PROFILE FOR RELATIVE WIND STRESS #######
 
